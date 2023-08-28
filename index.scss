@@ -1,0 +1,45 @@
+@use 'sass:list';
+@use 'sass:map';
+@use 'sass:math';
+@use 'sass:meta';
+@use 'sass:color';
+
+@function hsl-from-color($color) {
+  @return hsla(color.hue($color), color.saturation($color), color.lightness($color), color.alpha($color));
+}
+
+@function hsl-gradient-stop-pair($stop-1, $stop-2) {
+
+}
+
+@function hsl-gradient-stops($rgb-stops...) {
+  $i: 0;
+  $normalized-rgb-stops: ();
+  $default-fallback-direction: 'clockwise';
+  @each $rgb-stop in $rgb-stops {
+    $normalized-rgb-stop: ();
+    @each $rgb-stop-token in $rgb-stop {
+      @if meta.type-of($rgb-stop-token) == 'color' {
+        $normalized-rgb-stop: map.set($normalized-rgb-stop, 'color', $rgb-stop-token);
+      } @else if meta.type-of($rgb-stop-token) == 'number' {
+        @if math.is-unitless($rgb-stop-token) {
+          $normalized-rgb-stop: map.set($normalized-rgb-stop, 'extra-turns', $rgb-stop-token);
+        } @else {
+          $normalized-rgb-stop: map.set($normalized-rgb-stop, 'position', $rgb-stop-token);
+        }
+      } @else if meta.type-of($rgb-stop-token) == 'string' {
+        $normalized-rgb-stop: map.set($normalized-rgb-stop, 'direction', $rgb-stop-token);
+      }
+    }
+
+    $normalized-rgb-stops: list.append($normalized-rgb-stops, $normalized-rgb-stop);
+  }
+
+  @debug map.get(list.nth($normalized-rgb-stops, 1), 'color');
+  @return hsl-from-color(map.get(list.nth($normalized-rgb-stops, 1), 'color'));
+  @return meta.inspect($normalized-rgb-stops);
+}
+
+:root {
+  --variable: '#{hsl-gradient-stops(0% red 2 nearest, 50% green, 100% blue)}';
+}
