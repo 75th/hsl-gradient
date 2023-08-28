@@ -8,38 +8,74 @@
   @return hsla(color.hue($color), color.saturation($color), color.lightness($color), color.alpha($color));
 }
 
-@function hsl-gradient-stop-pair($stop-1, $stop-2) {
+@function structure-stop($stop) {
 
+}
+
+@function normalize-structured-stop($stop, $stop-index, $stop-count) {
+  // Normalize position.
+  $position: map.get($stop, 'position');
+  @return $stop;
 }
 
 @function hsl-gradient-stops($rgb-stops...) {
   $i: 0;
-  $normalized-rgb-stops: ();
+  $structured-stops: ();
+  // What direction to go if two adjacent stops are exactly 180° apart in hue
+  // and the current direction is 'closest'. (If the current direction is
+  // 'farthest', 180°-apart colors will proceed in the opposite of the default
+  // fallback direction.)
   $default-fallback-direction: 'clockwise';
+
+  $stop-count: list.length($rgb-stops);
+  $stop-index: 1;
+  // Loop over provided arguments.
   @each $rgb-stop in $rgb-stops {
-    $normalized-rgb-stop: ();
-    @each $rgb-stop-token in $rgb-stop {
-      @if meta.type-of($rgb-stop-token) == 'color' {
-        $normalized-rgb-stop: map.set($normalized-rgb-stop, 'color', $rgb-stop-token);
-      } @else if meta.type-of($rgb-stop-token) == 'number' {
-        @if math.is-unitless($rgb-stop-token) {
-          $normalized-rgb-stop: map.set($normalized-rgb-stop, 'extra-turns', $rgb-stop-token);
-        } @else {
-          $normalized-rgb-stop: map.set($normalized-rgb-stop, 'position', $rgb-stop-token);
+    // If a stop is just a string, it's the new default fallback direction.
+    $structured-stop: ();
+    @if meta.type-of($rgb-stop) == 'string' {
+      $default-fallback-direction: $rgb-stop;
+    } @else {
+      @each $rgb-stop-token in $rgb-stop {
+        // Color.
+        @if meta.type-of($rgb-stop-token) == 'color' {
+          $structured-stop: map.set($structured-stop, 'color', hsl-from-color($rgb-stop-token));
         }
-      } @else if meta.type-of($rgb-stop-token) == 'string' {
-        $normalized-rgb-stop: map.set($normalized-rgb-stop, 'direction', $rgb-stop-token);
+        // Position or extra turns.
+        @else if meta.type-of($rgb-stop-token) == 'number' {
+          // Extra turns.
+          @if math.is-unitless($rgb-stop-token) {
+            $structured-stop: map.set($structured-stop, 'extra-turns', $rgb-stop-token);
+
+            @if $stop-index == 0 {
+              @warn 'Extra turns on the first gradient stop are ignored; they apply to the transition from the previous stop, not into the next one.';
+            }
+          }
+          // Position.
+          @else {
+            $structured-stop: map.set($structured-stop, 'position', $rgb-stop-token);
+          }
+        }
+        // Direction into this stop.
+        @else if meta.type-of($rgb-stop-token) == 'string' {
+          $structured-stop: map.set($structured-stop, 'direction', $rgb-stop-token);
+
+          @if $stop-index == 0 {
+            @warn 'Direction on the first gradient stop is ignored; it applies to the transition from the previous stop, not into the next one.'
+          }
+        }
       }
+
+      $structured-stops: list.append($structured-stops, normalize-structured-stop($structured-stop, $stop-index, $stop-count));
     }
 
-    $normalized-rgb-stops: list.append($normalized-rgb-stops, $normalized-rgb-stop);
+    $stop-index: $stop-index + 1;
   }
 
-  @debug map.get(list.nth($normalized-rgb-stops, 1), 'color');
-  @return hsl-from-color(map.get(list.nth($normalized-rgb-stops, 1), 'color'));
-  @return meta.inspect($normalized-rgb-stops);
+  @debug $structured-stops;
+  @return hsl-from-color(map.get(list.nth($structured-stops, 1), 'color'));
 }
 
 :root {
-  --variable: '#{hsl-gradient-stops(0% red 2 nearest, 50% green, 100% blue)}';
+  --variable: '#{hsl-gradient-stops(0% red, 2 nearest 50% green, 100% blue)}';
 }
