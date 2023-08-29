@@ -95,7 +95,7 @@
 
       $start-position: map.get(list.nth($stops, $interpolation-group-start - 1), 'position');
       $end-position: map.get(list.nth($stops, $interpolation-group-end + 1), 'position');
-      $increment-amount: calc((#{$end-position} - #{$start-position}) / (#{$interpolation-group-end - $interpolation-group-start + 1}));
+      $increment-amount: calc((#{$end-position} - #{$start-position}) / #{$interpolation-group-end - $interpolation-group-start + 2});
 
       $number-of-increments: 1;
       @for $j from $interpolation-group-start through $interpolation-group-end {
