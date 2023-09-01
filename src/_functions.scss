@@ -206,11 +206,6 @@
   $stops: list.nth($structure-result, 1);
   $final-stops: ();
   $fallback-direction: list.nth($structure-result, 2);
-  $opposite-fallback-direction: 'counter-clockwise';
-
-  @if $fallback-direction == 'counter-clockwise' {
-    $opposite-fallback-direction: 'clockwise'
-  }
 
   $final-stops: list.append($final-stops, list.nth($stops, 1));
 
@@ -235,7 +230,7 @@
       @if $direction == 'nearest' {
         $direction: $fallback-direction;
       } @else if $direction == 'farthest' {
-        $direction: $opposite-fallback-direction;
+        $direction: opposite-direction($fallback-direction);
       }
     }
 

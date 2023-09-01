@@ -7,5 +7,5 @@
 :root {
   --position1: 10%;
   --position2: 70%;
-  background: linear-gradient(to right, #{hsl-gradient-stops(red var(--position1), green, blue var(--position2))});
+  background: linear-gradient(to right, #{hsl-gradient-stops(red, lime)});
 }
