@@ -54,7 +54,7 @@
     @return 'farthest';
   }
 
-  @error '#{$direction} is not a valid direction.'
+  @error '#{$direction} is not a valid direction.';
 }
 
 // Populate default values after all tokens in a stop have been structured.
