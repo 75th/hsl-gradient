@@ -1,0 +1,11 @@
+@use 'functions' as *;
+
+@function hsl-gradient-stops($stops...) {
+  @return render-stops(hsl-stops-from-rgb-stops(structure-stops($stops)));
+}
+
+:root {
+  --position1: 10%;
+  --position2: 70%;
+  background: linear-gradient(to right, #{hsl-gradient-stops(red var(--position1), green, blue var(--position2))});
+}
