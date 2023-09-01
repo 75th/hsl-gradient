@@ -9,6 +9,10 @@
   @return hsla(color.hue($color), color.saturation($color), color.lightness($color), color.alpha($color));
 }
 
+@function interpolate($start, $end, $fraction) {
+  @return calc((#{$end} - #{$start}) * #{$fraction} + #{$start});
+}
+
 // Support synonyms for directions.
 @function normalize-direction($direction) {
   @if list.index(('clockwise', 'up', 'positive'), $direction) {
@@ -95,12 +99,15 @@
 
       $start-position: map.get(list.nth($stops, $interpolation-group-start - 1), 'position');
       $end-position: map.get(list.nth($stops, $interpolation-group-end + 1), 'position');
-      $increment-amount: calc((#{$end-position} - #{$start-position}) / #{$interpolation-group-end - $interpolation-group-start + 2});
 
-      $number-of-increments: 1;
+      // Add 1 to make the subtraction inclusive. Add another 1 because x stops
+      // divide the range into x + 1 parts.
+      $total-increments: $interpolation-group-end - $interpolation-group-start + 1 + 1;
+
+      $current-increment: 1;
       @for $j from $interpolation-group-start through $interpolation-group-end {
-        $stops: list.set-nth($stops, $j, map.set($stop, 'position', calc(#{$start-position} + #{$increment-amount} * #{$number-of-increments})));
-        $number-of-increments: $number-of-increments + 1;
+        $stops: list.set-nth($stops, $j, map.set($stop, 'position', interpolate($start-position, $end-position, math.div($current-increment, $total-increments))));
+        $current-increment: $current-increment + 1;
       }
     }
 
@@ -112,6 +119,11 @@
 }
 
 @function structure-stops($stops) {
+  // What direction to go if two adjacent stops are exactly 180° apart in hue
+  // and the current direction is 'closest'. (If the current direction is
+  // 'farthest', 180°-apart colors will proceed in the opposite of the default
+  // fallback direction.)
+  $default-fallback-direction: 'clockwise';
   $structured-stops: ();
   $stop-count: list.length($stops);
   $stop-index: 1;
@@ -164,25 +176,114 @@
 
   $structured-stops: resolve-interpolated-positions($structured-stops);
 
-  @return $structured-stops;
+  @return ($structured-stops, $default-fallback-direction);
 }
 
+@function hsl-stops-from-rgb-stops($structure-result) {
+  $stops: list.nth($structure-result, 1);
+  $final-stops: ();
+  $fallback-direction: list.nth($structure-result, 2);
+  $opposite-fallback-direction: 'counter-clockwise';
 
+  @if $fallback-direction == 'counter-clockwise' {
+    $opposite-fallback-direction: 'clockwise'
+  }
+
+  $final-stops: list.append($final-stops, list.nth($stops, 1));
+
+  @for $i from 1 through list.length($stops) - 1 {
+    $stop1: list.nth($stops, $i);
+    $stop2: list.nth($stops, $i + 1);
+    $position1: map.get($stop1, 'position');
+    $position2: map.get($stop2, 'position');
+    $color1: map.get($stop1, 'color');
+    $color2: map.get($stop2, 'color');
+    $hue1: color.hue($color1);
+    $hue2: color.hue($color2);
+    $hue-difference: $hue2 - $hue1;
+    $direction: map.get($stop2, 'direction');
+    $extra-turns: map.get($stop2, 'extra-turns');
+    $hue-change: 180deg;
+
+    // Change the direction to a fallback if necessary.
+    @if math.abs($hue-difference) == 180deg {
+      @if $direction == 'nearest' {
+        $direction: $fallback-direction;
+      } @else if $direction == 'farthest' {
+        $direction: $opposite-fallback-direction;
+      }
+    }
+
+    // Resolve 'nearest' or 'farthest' to an absolute direction.
+    @if list.index(('nearest', 'farthest'), $direction) {
+      // Set variables for which directions do and do not involve a wrap from 0 to 360 or vice versa.
+      $wrap-direction: 'counter-clockwise';
+      $no-wrap-direction: 'clockwise';
+
+      @if $hue-difference < 0 {
+        $wrap-direction: 'clockwise';
+        $no-wrap-direction: 'counter-clockwise';
+      }
+
+      // Determine the shortest direction.
+      @if math.abs($hue-difference) < 180deg {
+        $direction: $no-wrap-direction;
+        $hue-change: math.abs($hue-difference) + (360deg * $extra-turns);
+      } @else {
+        $direction: $wrap-direction;
+        $hue-change: (360deg - math.abs($hue-difference)) + (360deg * $extra-turns);
+      }
+    }
+
+    $start-hue: $hue1;
+    $end-hue: $hue1 + $hue-change;
+
+    @if $direction == 'counter-clockwise' {
+      $end-hue: $end-hue * -1;
+    }
+
+    @for $hue from $start-hue through $end-hue {
+      @if $hue % 60 == 0deg {
+        $percentage: math.div($hue - $start-hue, $end-hue - $start-hue);
+        $interpolated-color: hsla(
+          $hue,
+          interpolate(color.saturation($color1), color.saturation($color2), $percentage),
+          interpolate(color.lightness($color1),  color.lightness($color2),  $percentage),
+          interpolate(color.alpha($color1),      color.alpha($color2),      $percentage)
+        );
+        $interpolated-position: interpolate($position1, $position2, $percentage);
+        $final-stops: list.append($final-stops, ('color': $interpolated-color, 'position': $interpolated-position));
+      }
+    }
+
+    $final-stops: list.append($final-stops, $stop2);
+  }
+
+  $final-stops: list.append($final-stops, list.index($stops, list.length($stops)));
+
+  @return $final-stops;
+}
+
+@function render-stops($stops) {
+  $stops-string: '';
+
+  @each $stop in $stops {
+    @if($stop) {
+      $stops-string: $stops-string + #{map.get($stop, 'color') map.get($stop, 'position')} + ', '
+    }
+  }
+
+  @return string.slice($stops-string, 1, -3);
+}
 
 @function hsl-gradient-stops($stops...) {
   $i: 0;
-  $structured-stops: structure-stops($stops);
-  // What direction to go if two adjacent stops are exactly 180° apart in hue
-  // and the current direction is 'closest'. (If the current direction is
-  // 'farthest', 180°-apart colors will proceed in the opposite of the default
-  // fallback direction.)
-  $default-fallback-direction: 'clockwise';
-
-
-  @debug $structured-stops;
-  @return hsl-from-color(map.get(list.nth($structured-stops, 1), 'color'));
+  $structure-result: structure-stops($stops);
+  $hsl-stops: hsl-stops-from-rgb-stops($structure-result);
+  $final-stops: render-stops($hsl-stops);
+  @return $final-stops;;
 }
 
 :root {
-  --variable: '#{hsl-gradient-stops(red, red 10%, 2 far green, yellow, blue 90%, blue)}';
+  background: linear-gradient(to right, #{hsl-gradient-stops(green, blue, yellow, red)});
 }
