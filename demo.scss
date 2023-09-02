@@ -1,0 +1,47 @@
+@use 'src' as *;
+
+.demo {
+  height: 70px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  div {
+    height: 100%;
+    width: 1px;
+    background-color: black;
+  }
+}
+
+.demo--colors-only {
+  background-image: linear-gradient(to right, #{hsl-gradient-stops(lime, red)});
+}
+
+.demo--specify-direction-1 {
+  background-image: linear-gradient(to right, #{hsl-gradient-stops(lime, farthest red)});
+}
+
+.demo--specify-direction-2 {
+  background-image: linear-gradient(to right, #{hsl-gradient-stops(red, counter-clockwise lime)});
+}
+
+.demo--extra-turns {
+  background-image: linear-gradient(to right, #{hsl-gradient-stops(lime, 1 lime)});
+}
+
+.demo--many-colors {
+  background-image: linear-gradient(to right, #{hsl-gradient-stops(lime, red, lime farthest, cyan, orange, blue, orange farthest)});
+}
+
+.demo--sl-once {
+  background-image: linear-gradient(to right, #{hsl-gradient-stops(red, 1 #000033)});
+}
+
+
+
+pre {
+  background-color: #f4f4f4;
+  white-space: pre-line;
+  margin: 15px 0;
+  padding: 15px;
+}

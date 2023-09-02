@@ -59,6 +59,13 @@
 
 // Populate default values after all tokens in a stop have been structured.
 @function normalize-structured-stop($stop, $stop-index, $stop-count) {
+  // Error if color not provided.
+  $color: map.get($stop, 'color');
+
+  @if meta.type-of($color) == 'null' {
+    @error 'All gradient stops must contain a color.';
+  }
+
   // Normalize position.
   $position: map.get($stop, 'position');
 
@@ -70,13 +77,6 @@
     } @else {
       $position: 'interpolate';
     }
-  }
-
-  // Error if color not provided.
-  $color: map.get($stop, 'color');
-
-  @if meta.type-of($color) == 'null' {
-    @error 'All gradient stops must contain a color.';
   }
 
   $stop: map.set($stop, 'position', $position);
@@ -102,11 +102,13 @@
   @return $stop;
 }
 
+// Calculate evenly-spaced positions for any stops without hard-coded ones.
 @function resolve-interpolated-positions($stops) {
   $i: 1;
 
   // We do want to omit the last stop, so < instead of <=.
   @while $i < list.length($stops) {
+    // Indexes of first and last stops in a group of *consecutive* interpolated stops.
     $interpolation-group-start: $i;
     $interpolation-group-end: $i;
     $stop: list.nth($stops, $i);
@@ -114,14 +116,16 @@
 
       $interpolation-group-active: true;
 
+      // Increment $interpolation-group-end until we find a stop with a hard-coded position.
       @for $j from $i + 1 through list.length($stops) {
         @if $interpolation-group-active and map.get(list.nth($stops, $j), 'position') == 'interpolate' {
           $interpolation-group-end: $j;
         } @else {
-          $interpolation-active: false;
+          $interpolation-group-active: false;
         }
       }
 
+      // Get the positions of the stops before and after the group of interpolated ones.
       $start-position: map.get(list.nth($stops, $interpolation-group-start - 1), 'position');
       $end-position: map.get(list.nth($stops, $interpolation-group-end + 1), 'position');
 
@@ -136,27 +140,32 @@
       }
     }
 
+    // Resume finding interpolation groups with the stop after the current one.
     $i: $interpolation-group-end + 1;
   }
 
   @return $stops;
 }
 
+// Turn provided tokens into a list of stops. Each stop is a map containing
+// 'color', 'position', 'direction', and 'extra-turns' properties.
 @function structure-stops($stops) {
   // What direction to go if two adjacent stops are exactly 180° apart in hue
   // and the current direction is 'closest'. (If the current direction is
   // 'farthest', 180°-apart colors will proceed in the opposite of the default
   // fallback direction.)
-  $default-fallback-direction: 'clockwise';
+  $fallback-direction: 'clockwise';
   $structured-stops: ();
   $stop-count: list.length($stops);
   $stop-index: 1;
   // Loop over provided arguments.
   @each $stop in $stops {
     $structured-stop: ();
-    // If a stop is just a string, it's either a CSS custom property, which can only be a position, or the new default fallback direction.
+    // If a stop is just a string, it's either a CSS custom property, which can
+    // only be a position and is therefore invalid by itself, or the new default
+    // fallback direction.
     @if meta.type-of($stop) == 'string' {
-      $default-fallback-direction: $stop;
+      $fallback-direction: $stop;
     } @else {
       @each $stop-token in $stop {
         // Color.
@@ -198,8 +207,9 @@
     $stop-index: $stop-index + 1;
   }
 
+  // Assign evenly-spaced positions to stops without provided ones.
   $structured-stops: resolve-interpolated-positions($structured-stops);
-  @return ($structured-stops, $default-fallback-direction);
+  @return ($structured-stops, $fallback-direction);
 }
 
 @function hsl-stops-from-rgb-stops($structure-result) {
@@ -225,8 +235,8 @@
     $hue-change: false;
 
     // Change the direction to a fallback if necessary.
-    @if math.abs($hue-difference) == 180deg {
-      $hue-change: 180deg;
+    @if math.abs($hue-difference) % 180 == 0deg {
+      $hue-change: math.abs($hue-difference);
       @if $direction == 'nearest' {
         $direction: $fallback-direction;
       } @else if $direction == 'farthest' {

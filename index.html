@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+  <head>
+    <meta charset="UTF-8">
+    <title>HSL Gradient Stops</title>
+    <link href="/dist/demo.css" rel="stylesheet">
+  </head>
+
+  <body>
+    <h1>HSL Gradient Stops Demo</h1>
+
+    <h2>Colors only</h2>
+
+    <pre>
+      background-image: linear-gradient(to right, #{hsl-gradient-stops(lime, red)});
+    </pre>
+
+    <div class="demo demo--colors-only"></div>
+
+    <h2>Specify direction (default is 'nearest')</h2>
+
+    <pre>
+      background-image: linear-gradient(to right, #{hsl-gradient-stops(lime, farthest red)});
+    </pre>
+
+    <div class="demo demo--specify-direction-1"></div>
+
+    <pre>
+      background-image: linear-gradient(to right, #{hsl-gradient-stops(red, counter-clockwise lime)});
+    </pre>
+
+    <div class="demo demo--specify-direction-2"></div>
+
+    <h2>Many colors (stop markers overlaid)</h2>
+
+    <pre>
+      background-image: linear-gradient(to right, #{hsl-gradient-stops(lime, red, lime farthest, cyan, orange, blue, orange farthest)});
+    </pre>
+
+    <div class="demo demo--many-colors">
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+      <div></div>
+    </div>
+
+    <h2>Add extra turns through the color wheel</h2>
+
+    <pre>
+      background-image: linear-gradient(to right, #{hsl-gradient-stops(lime, 1 lime)});
+    </pre>
+
+    <div class="demo demo--extra-turns"></div>
+
+    <h2>Saturation and Lightness are interpolated once, regardless of extra turns</h2>
+
+    <pre>
+      background-image: linear-gradient(to right, #{hsl-gradient-stops(red, 1 #000033)});
+    </pre>
+
+    <div class="demo demo--sl-once">
+    </div>
+  </body>
+</html>
