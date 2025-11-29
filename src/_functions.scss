@@ -104,6 +104,7 @@
 
 // Calculate evenly-spaced positions for any stops without hard-coded ones.
 @function resolve-interpolated-positions($stops) {
+  @debug $stops;
   $i: 1;
 
   // We do want to omit the last stop, so < instead of <=.
@@ -158,6 +159,7 @@
   $structured-stops: ();
   $stop-count: list.length($stops);
   $stop-index: 1;
+  $structured-stop-index: 0;
   // Loop over provided arguments.
   @each $stop in $stops {
     $structured-stop: ();
@@ -167,6 +169,7 @@
     @if meta.type-of($stop) == 'string' {
       $fallback-direction: $stop;
     } @else {
+      $structured-stop-index: $structured-stop-index + 1;
       @each $stop-token in $stop {
         // Color.
         @if meta.type-of($stop-token) == 'color' {
@@ -178,7 +181,7 @@
           @if math.is-unitless($stop-token) {
             $structured-stop: map.set($structured-stop, 'extra-turns', $stop-token);
 
-            @if $stop-index == 0 {
+            @if $structured-stop-index == 1 {
               @warn 'Extra turns on the first gradient stop are ignored; they apply to the transition from the previous stop, not into the next one.';
             }
           }
@@ -195,13 +198,13 @@
             $structured-stop: map.set($structured-stop, 'direction', $stop-token);
           }
 
-          @if $stop-index == 0 {
+          @if $structured-stop-index == 1 {
             @warn 'Direction on the first gradient stop is ignored; it applies to the transition from the previous stop, not into the next one.'
           }
         }
       }
 
-      $structured-stops: list.append($structured-stops, normalize-structured-stop($structured-stop, $stop-index, $stop-count));
+      $structured-stops: list.append($structured-stops, normalize-structured-stop($structured-stop, $structured-stop-index, $stop-count));
     }
 
     $stop-index: $stop-index + 1;
